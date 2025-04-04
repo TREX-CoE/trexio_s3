@@ -61,15 +61,33 @@ pub unsafe extern "C" fn s3_connect() -> *mut Client {
 
 /// Destroys a connection to an S3 server
 pub unsafe extern "C" fn s3_disconnect(client: *mut Client) {
-    drop(Box::from_raw(client));
+    if !client.is_null() {
+        drop(Box::from_raw(client));
+    }
 }
 
 
 
 /// Checks if a file exists on the server. Returns 1 if the object
 /// exists, 0 if it does not exist.
-pub unsafe extern "C" fn s3_file_exists(client: *const Client, file_name: *const c_char) -> i32 {
-    let s: &str = CStr::from_ptr(file_name).to_str().unwrap();
+pub unsafe extern "C" fn s3_file_exists(client: *const Client,
+                                        file_name: *const c_char,
+                                        str_len: usize) -> i32 {
+    if client.is_null() {
+        panic!("In s3_file_exists, client is a NULL pointer.")
+    };
+
+    if file_name.is_null() {
+        panic!("In s3_file_exists, file_name is a NULL pointer.")
+    };
+
+    let cstr = CStr::from_ptr(file_name);
+    if cstr.to_bytes().len() > str_len {
+        panic!("In s3_file_exists, file_name length too small.")
+    };
+
+    let s: &str = cstr.to_str().unwrap();
+
     let b = BucketAndKey::from_str(s);
     match b {
         None => -1,
@@ -90,9 +108,24 @@ pub unsafe extern "C" fn s3_file_exists(client: *const Client, file_name: *const
 }
 
 
-pub unsafe extern "C" fn s3_size(client: *const Client, file_name: *const c_char) -> i64
+pub unsafe extern "C" fn s3_size(client: *const Client,
+                                 file_name: *const c_char,
+                                 str_len: usize) -> i64
 {
-    let s: &str = CStr::from_ptr(file_name).to_str().unwrap();
+    if client.is_null() {
+        panic!("In s3_size, client is a NULL pointer.")
+    };
+
+    if file_name.is_null() {
+        panic!("In s3_size, file_name is a NULL pointer.")
+    };
+
+    let cstr = CStr::from_ptr(file_name);
+    if cstr.to_bytes().len() > str_len {
+        panic!("In s3_size, file_name length too small.")
+    };
+
+    let s: &str = cstr.to_str().unwrap();
     let b = BucketAndKey::from_str(s);
     match b {
         None => -1,
@@ -117,14 +150,32 @@ pub unsafe extern "C" fn s3_size(client: *const Client, file_name: *const c_char
 
 
 
-/// Retreives the content of a file into a buffer. Returns 0 upon
+/// Retreives the content of an object into a buffer. Returns 0 upon
 /// success.
 pub unsafe extern "C" fn s3_get(client: *const Client,
                                 file_name: *const c_char,
+                                str_len: usize,
                                 buffer: *mut u8,
                                 buffer_size: usize) -> i32
 {
-    let s: &str = CStr::from_ptr(file_name).to_str().unwrap();
+    if client.is_null() {
+        panic!("In s3_get, client is a NULL pointer.")
+    };
+
+    if file_name.is_null() {
+        panic!("In s3_get, file_name is a NULL pointer.")
+    };
+
+    if buffer.is_null() {
+        panic!("In s3_get, buffer is a NULL pointer.")
+    };
+
+    let cstr = CStr::from_ptr(file_name);
+    if cstr.to_bytes().len() > str_len {
+        panic!("In s3_get, file_name length too small.")
+    };
+
+    let s: &str = cstr.to_str().unwrap();
     let b = BucketAndKey::from_str(s);
     match b {
         None => -1,
@@ -160,6 +211,63 @@ pub unsafe extern "C" fn s3_get(client: *const Client,
         }
     }
 }
+
+
+
+/// Puts the content of a buffer into an object. Returns 0 upon
+/// success.
+pub unsafe extern "C" fn s3_put(client: *const Client,
+                                file_name: *const c_char,
+                                str_len: usize,
+                                buffer: *const u8,
+                                buffer_size: usize) -> i32
+{
+    if client.is_null() {
+        panic!("In s3_put, client is a NULL pointer.")
+    };
+
+    if file_name.is_null() {
+        panic!("In s3_put, file_name is a NULL pointer.")
+    };
+
+    if buffer.is_null() {
+        panic!("In s3_put, buffer is a NULL pointer.")
+    };
+
+    let cstr = CStr::from_ptr(file_name);
+    if cstr.to_bytes().len() > str_len {
+        panic!("In s3_put, file_name length too small.")
+    };
+
+    let s: &str = CStr::from_ptr(file_name).to_str().unwrap();
+    let b = BucketAndKey::from_str(s);
+    match b {
+        None => -1,
+        Some(b) => {
+            let bucket = b.bucket;
+            let key = b.key;
+            
+            let c = &(*client);
+            let s = unsafe {slice::from_raw_parts(buffer, buffer_size) };
+            let body = aws_sdk_s3::primitives::ByteStream::from_static(s);
+            
+            // Attempt to fetch object metadata
+            rt().unwrap().block_on(async {
+                match c.put_object()
+                    .bucket(bucket)
+                    .key(key)
+                    .body(body)
+                    .send()
+                    .await {
+                        Ok(_) => 0,
+                        _ => -1
+                    }
+            })
+        }
+    }
+}
+
+// ----------------- Tests -----------------
 
 #[cfg(test)]
 mod tests {
@@ -218,50 +326,75 @@ mod tests {
         unsafe {
             let client = s3_connect();
 
-            let x = str_to_c_char("data/pouet");
+            let s = "data/pouet";
+            let x = str_to_c_char(s);
             let file_name = x.as_ptr();
-            let response = s3_file_exists(client, file_name);
+            let response = s3_file_exists(client, file_name,s.len());
             assert_eq!(response, 0);
 
-            let x = str_to_c_char("pouet");
+            let s = "pouet";
+            let x = str_to_c_char(s);
             let file_name = x.as_ptr();
-            let response = s3_file_exists(client, file_name);
+            let response = s3_file_exists(client, file_name,s.len());
             assert_eq!(response, 0);
 
-            let x = str_to_c_char("data");
+            let s = "data";
+            let x = str_to_c_char(s);
             let file_name = x.as_ptr();
-            let response = s3_file_exists(client, file_name);
+            let response = s3_file_exists(client, file_name,s.len());
             assert_eq!(response, 0);
 
-            let x = str_to_c_char("data/test.c");
+            let s = "data/test.c";
+            let x = str_to_c_char(s);
             let file_name = x.as_ptr();
-            let response = s3_file_exists(client, file_name);
+            let response = s3_file_exists(client, file_name, s.len());
             assert_eq!(response, 1);
 
-            let x = str_to_c_char("data/test/hello.rs");
+            let s = "data/test/hello.rs";
+            let x = str_to_c_char(s);
             let file_name = x.as_ptr();
-            let response = s3_file_exists(client, file_name);
+            let response = s3_file_exists(client, file_name, s.len());
             assert_eq!(response, 1);
         }
     }
 
-    #[test]
+    fn put_object() {
+        unsafe {
+            let client = s3_connect();
+
+            let s = "data/test";
+            let x = str_to_c_char(s);
+            let file_name = x.as_ptr();
+            let string : Vec::<u8> = "Hello world!".bytes().collect();
+            let ptr: *const u8 = string.as_slice().as_ptr() as *const u8;
+            let rc = s3_put(client, file_name, s.len(), ptr, string.len());
+            assert_eq!(rc, 0);
+        }
+    }
+    
     fn get_object() {
         unsafe {
             let client = s3_connect();
 
-            let x = str_to_c_char("data/test.c");
+            let s = "data/test";
+            let x = str_to_c_char(s);
             let file_name = x.as_ptr();
-            let size = s3_size(client, file_name);
+            let size = s3_size(client, file_name, s.len());
             assert!(size > 0);
 
             let size = size.try_into().unwrap();
             let mut buffer = vec![0_u8 ; size];
             let ptr: *mut u8 = buffer.as_mut_slice().as_mut_ptr();
-            let rc = s3_get(client, file_name, ptr, size);
-//            println!("{:?}", CStr::from_ptr(ptr as *const c_char));
+            let rc = s3_get(client, file_name, s.len(), ptr, size);
             assert_eq!(rc, 0);
+            assert_eq!(String::from_utf8(buffer).unwrap(), String::from("Hello world!"));
         }
+    }
+
+    #[test]
+    fn put_and_get() {
+        put_object();
+        get_object();
     }
 
 }
