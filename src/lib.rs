@@ -50,6 +50,7 @@ impl BucketAndKey {
 
 
 /// Creates a connection to an S3 server
+#[no_mangle]
 pub unsafe extern "C" fn s3_connect() -> *mut Client {
     let result =
         rt().unwrap().block_on(async {
@@ -60,6 +61,7 @@ pub unsafe extern "C" fn s3_connect() -> *mut Client {
 }
 
 /// Destroys a connection to an S3 server
+#[no_mangle]
 pub unsafe extern "C" fn s3_disconnect(client: *mut Client) {
     if !client.is_null() {
         drop(Box::from_raw(client));
@@ -70,6 +72,7 @@ pub unsafe extern "C" fn s3_disconnect(client: *mut Client) {
 
 /// Checks if a file exists on the server. Returns 1 if the object
 /// exists, 0 if it does not exist.
+#[no_mangle]
 pub unsafe extern "C" fn s3_file_exists(client: *const Client,
                                         file_name: *const c_char,
                                         str_len: usize) -> i32 {
@@ -94,7 +97,7 @@ pub unsafe extern "C" fn s3_file_exists(client: *const Client,
         Some(b) => {
             let bucket = b.bucket;
             let key = b.key;
-            
+
             let c = &(*client);
             // Attempt to fetch object metadata
             rt().unwrap().block_on(async {
@@ -108,6 +111,7 @@ pub unsafe extern "C" fn s3_file_exists(client: *const Client,
 }
 
 
+#[no_mangle]
 pub unsafe extern "C" fn s3_size(client: *const Client,
                                  file_name: *const c_char,
                                  str_len: usize) -> i64
@@ -132,7 +136,7 @@ pub unsafe extern "C" fn s3_size(client: *const Client,
         Some(b) => {
             let bucket = b.bucket;
             let key = b.key;
-            
+
             let c = &(*client);
             // Attempt to fetch object metadata
             rt().unwrap().block_on(async {
@@ -141,7 +145,7 @@ pub unsafe extern "C" fn s3_size(client: *const Client,
                     Ok(r) => r,
                     _ => return -1
                 };
-                
+
                 resp.content_length().unwrap()
             })
         }
@@ -152,6 +156,7 @@ pub unsafe extern "C" fn s3_size(client: *const Client,
 
 /// Retreives the content of an object into a buffer. Returns 0 upon
 /// success.
+#[no_mangle]
 pub unsafe extern "C" fn s3_get(client: *const Client,
                                 file_name: *const c_char,
                                 str_len: usize,
@@ -182,7 +187,7 @@ pub unsafe extern "C" fn s3_get(client: *const Client,
         Some(b) => {
             let bucket = b.bucket;
             let key = b.key;
-            
+
             let c = &(*client);
             // Attempt to fetch object metadata
             rt().unwrap().block_on(async {
@@ -216,6 +221,7 @@ pub unsafe extern "C" fn s3_get(client: *const Client,
 
 /// Puts the content of a buffer into an object. Returns 0 upon
 /// success.
+#[no_mangle]
 pub unsafe extern "C" fn s3_put(client: *const Client,
                                 file_name: *const c_char,
                                 str_len: usize,
@@ -246,11 +252,11 @@ pub unsafe extern "C" fn s3_put(client: *const Client,
         Some(b) => {
             let bucket = b.bucket;
             let key = b.key;
-            
+
             let c = &(*client);
             let s = unsafe {slice::from_raw_parts(buffer, buffer_size) };
             let body = aws_sdk_s3::primitives::ByteStream::from_static(s);
-            
+
             // Attempt to fetch object metadata
             rt().unwrap().block_on(async {
                 match c.put_object()
@@ -371,7 +377,7 @@ mod tests {
             assert_eq!(rc, 0);
         }
     }
-    
+
     fn get_object() {
         unsafe {
             let client = s3_connect();
