@@ -15,12 +15,16 @@ int main() {
   rc = s3_put(client, file_name, strlen(file_name), data, strlen(data));
   assert (rc == 0);
 
+  rc = s3_file_exists(client, file_name, strlen(file_name));
+  assert (rc == 0);
+
   size_t size = s3_size(client, file_name, strlen(file_name));
   char* data_read = malloc(size * sizeof(char));
   rc = s3_get(client, file_name, strlen(file_name), data_read, size);
   assert(rc == 0);
 
   printf("'%s'\n", data_read);
+
 
   free(data_read);
 

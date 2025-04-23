@@ -102,8 +102,8 @@ pub unsafe extern "C" fn s3_file_exists(client: *const Client,
             // Attempt to fetch object metadata
             rt().unwrap().block_on(async {
                 match c.head_object().bucket(bucket).key(key).send().await {
-                    Ok(_) => 1,
-                    Err(_) => 0,
+                    Ok(_) => 0,
+                    Err(_) => -1,
                 }
             })
         }
