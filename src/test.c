@@ -10,7 +10,7 @@ int main() {
 
   trexio_s3_client* client = s3_connect();
 
-  char* file_name = "data/test_c";
+  char* file_name = "poc-trexio-b1/test_c";
   char* data = "Hello World in C source file!\n";
   rc = s3_put(client, file_name, strlen(file_name), data, strlen(data));
   assert (rc == 0);

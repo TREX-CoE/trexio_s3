@@ -332,35 +332,29 @@ mod tests {
         unsafe {
             let client = s3_connect();
 
-            let s = "data/pouet";
+            let s = "poc-trexio-b1/test";
             let x = str_to_c_char(s);
             let file_name = x.as_ptr();
             let response = s3_file_exists(client, file_name,s.len());
             assert_eq!(response, 0);
 
-            let s = "pouet";
+            let s = "poc-trexio-b1/test_c";
             let x = str_to_c_char(s);
             let file_name = x.as_ptr();
             let response = s3_file_exists(client, file_name,s.len());
             assert_eq!(response, 0);
 
-            let s = "data";
-            let x = str_to_c_char(s);
-            let file_name = x.as_ptr();
-            let response = s3_file_exists(client, file_name,s.len());
-            assert_eq!(response, 0);
-
-            let s = "data/test.c";
+            let s = "poc-trexio-b1/test.c";
             let x = str_to_c_char(s);
             let file_name = x.as_ptr();
             let response = s3_file_exists(client, file_name, s.len());
-            assert_eq!(response, 1);
+            assert_eq!(response, -1);
 
-            let s = "data/test/hello.rs";
+            let s = "poc-trexio-b1/test/hello.rs";
             let x = str_to_c_char(s);
             let file_name = x.as_ptr();
             let response = s3_file_exists(client, file_name, s.len());
-            assert_eq!(response, 1);
+            assert_eq!(response, -1);
         }
     }
 
@@ -368,7 +362,7 @@ mod tests {
         unsafe {
             let client = s3_connect();
 
-            let s = "data/test";
+            let s = "poc-trexio-b1/test";
             let x = str_to_c_char(s);
             let file_name = x.as_ptr();
             let string : Vec::<u8> = "Hello world!".bytes().collect();
@@ -382,7 +376,7 @@ mod tests {
         unsafe {
             let client = s3_connect();
 
-            let s = "data/test";
+            let s = "poc-trexio-b1/test";
             let x = str_to_c_char(s);
             let file_name = x.as_ptr();
             let size = s3_size(client, file_name, s.len());
