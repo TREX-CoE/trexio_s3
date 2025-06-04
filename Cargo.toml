@@ -2,6 +2,8 @@
 name = "trexio_s3"
 version = "0.1.0"
 edition = "2021"
+license = "bsd-3clause"
+authors = [ "Anthony Scemama <scemama@irsamc.ups-tlse.fr>" ]
 
 [dependencies]
 aws-config = { version = "1.1.7", features = ["behavior-version-latest"] }
@@ -12,6 +14,7 @@ thread_local = "1.1.8"
 tokio = { version = "1", features = ["full"] }
 
 [lib]
-crate-type = ["cdylib", "rlib"]      # Creates dynamic lib
+crate-type = ["cdylib", "staticlib"]
+#crate-type = ["cdylib", "rlib"]      # Creates dynamic lib
 #crate-type = ["staticlib"] # Creates static lib
 
