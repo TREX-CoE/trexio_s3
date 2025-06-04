@@ -70,8 +70,8 @@ pub unsafe extern "C" fn s3_disconnect(client: *mut Client) {
 
 
 
-/// Checks if a file exists on the server. Returns 1 if the object
-/// exists, 0 if it does not exist.
+/// Checks if a file exists on the server. Returns 0 if the object
+/// exists, -1 if it does not exist.
 #[no_mangle]
 pub unsafe extern "C" fn s3_file_exists(client: *const Client,
                                         file_name: *const c_char,
